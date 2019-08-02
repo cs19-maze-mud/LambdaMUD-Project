@@ -71,7 +71,7 @@ def initialize(request):
 
     for p_uuid in uuids:
         pusher.trigger(
-            f'p-channel-{p_uuid}', u'game-started', {'message': f'game starting'})
+            f'p-channel-{p_uuid}', u'broadcast', {'message': f'game starting', 'init': 'Game initializing'})
 
     return JsonResponse(response_object, safe=True)
 
@@ -147,6 +147,9 @@ def joinlobby(request):
         new_game.generate_maze()
         new_game.generate_ending()
 
+    for p_uuid in new_game.get_games_UUIDs(uuid):
+        pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
+                       {'message': f'{player.user.username} has entered the lobby', 'joining': 'joining lobby'})
     player.initialize(new_game.id, new_game.min_room_id)
     player.save()
     room = player.room()
@@ -219,6 +222,10 @@ def move(request):
         player.moves += 1
         if next_room.end:
             # Todo: Refactor if more than 1 game going at the same time:
+            player_uuid = player.uuid
+            for p_uuid in game.get_games_UUIDs(player_uuid):
+                pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
+                               {'message': f'{player.user.username} has completed the maze', 'ending': 'maze completed'})
             min_room_id = game.min_room_id
             max_room_id = min_room_id+game.total_rooms()
             Room.objects.filter(id__gte=min_room_id,
@@ -297,25 +304,24 @@ def say(request):
     message = data['message']
     room = player.room()
     player_UUIDs = room.player_UUIDs(player_id)
+    print("UUIDS: ", player_UUIDs)
     for p_uuid in player_UUIDs:
         pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
                        {'message': f'{player.user.username}: {message}'})
 
     players = room.player_usernames(player_uuid)
-    return JsonResponse({'name': player.user.username, 'title': room.title, 'description': room.description, 'players': players, 'message': message}, safe=True)
+    return JsonResponse({'message': message}, safe=True)
 
 
 @csrf_exempt
 @api_view(['POST'])
 def shout(request):
     player = request.user.player
-    player_id = player.user.id
     player_uuid = player.uuid
     data = json.loads(request.body)
     message = data['message']
     game = player.game()
-    game_UUIDS = game.player_UUIDs().filter(lambda p_uuid: p_uuid != player_uuid)
-    for p_uuid in game_UUIDs:
+    for p_uuid in game.get_games_UUIDs(player_uuid):
         pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
                        {'message': f'{player.user.username}: {message}'})
     return JsonResponse({'message_to_channel': message}, safe=True)
