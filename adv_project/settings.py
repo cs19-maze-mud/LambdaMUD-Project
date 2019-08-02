@@ -29,7 +29,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', cast=bool)
 
 
-if DEBUG:
+if not DEBUG:
     ADMINS = [('Admins', config('EMAIL'))]
     ALLOWED_HOSTS = ['.maze-mud-server.herokuapp.com','.maze-mud-client.herokuapp.com']
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
