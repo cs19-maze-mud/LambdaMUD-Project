@@ -98,10 +98,42 @@ def joinlobby(request):
     uuid = player.uuid
 
     if player.game() is not None:
+        game = player.game()
+        room = player.room()
+
+        min_room_id = game.min_room_id
+        max_room_id = min_room_id+game.total_rooms()
+        rooms_arr = list(Room.objects.filter(
+            id__gte=min_room_id, id__lte=max_room_id))
+        for i in range(len(rooms_arr)):
+            rooms_arr[i] = model_to_dict(rooms_arr[i])
+
         return JsonResponse({
-            'in_progress': True,
-            'error': True,
-            'message': 'Currently in a game, Cannot join a new one'}, safe=True)
+        'user': {
+            'uuid': player.uuid,
+            'username': player.user.username,
+        },
+        'game': {
+            'id': game.id,
+            'in_progress': game.in_progress,
+            'uuids': room.player_UUIDs(player_id),
+            'usernames': room.player_usernames(player_id),
+            'num_players': game.num_players()
+        },
+        'current_room': {
+            'title': room.title,
+            'description': room.description,
+            'visited': room.visited,
+            'end': room.end,
+            'players': room.player_usernames(player_id),
+            'loc': room.id,
+            'n': room.n,
+            's': room.s,
+            'e': room.e,
+            'w': room.w,
+        },
+        'maze': rooms_arr
+    }, safe=True)
 
     if no_preference and Game.objects.filter(in_progress=False):
         new_game = Game.objects.get(in_progress=False)
