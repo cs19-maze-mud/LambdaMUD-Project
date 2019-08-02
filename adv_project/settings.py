@@ -28,8 +28,17 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', cast=bool)
 
+
 if DEBUG:
+    ADMINS = [('Admins', config('EMAIL'))]
     ALLOWED_HOSTS = ['.maze-mud-server.herokuapp.com','.maze-mud-client.herokuapp.com']
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_USE_TLS = True
+    EMAIL_PORT = 587
+    EMAIL_HOST_USER = config('EMAIL')
+    EMAIL_HOST_PASSWORD = config('EMAIL_PASS')
+    EMAIL_SUBJECT_PREFIX = 'ERROR: LAMBDA MUD SERVER:'
 else:
     ALLOWED_HOSTS = []
 
