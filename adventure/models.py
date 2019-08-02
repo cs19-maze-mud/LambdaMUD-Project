@@ -91,13 +91,12 @@ class Game(models.Model):
     def num_players(self):
         return Player.objects.filter(game_id=self.id).count()
 
-    def get_games_UUIDs(self):
+    def get_games_UUIDs(self, player_uuid):
         players_list = list(Player.objects.filter(game_id=self.id))
         for i in range(len(players_list)):
-
-            players_list[i] = model_to_dict(players_list[i]).uuid
-
-        return players_list
+            players_list[i] = model_to_dict(players_list[i])['uuid']
+        return list(filter(lambda p_uuid: p_uuid !=
+                           player_uuid, players_list))
 
     @staticmethod
     def generate_title():
