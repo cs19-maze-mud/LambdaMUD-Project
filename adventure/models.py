@@ -17,10 +17,11 @@ class Game(models.Model):
     min_room_id = models.IntegerField(default=0)
 
     def generate_rooms(self):
-        room = Room.objects.all().aggregate(Max('id'))['id__max']
-
-        print(room)
-        self.min_room_id = room
+        room_id = Room.objects.all().aggregate(Max('id'))['id__max']
+        if room_id is None:
+            room_id = 0
+        print(room_id)
+        self.min_room_id = room_id 
         self.save()
 
         total_rooms = self.total_rooms()
