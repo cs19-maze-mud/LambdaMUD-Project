@@ -1,12 +1,12 @@
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
-from pusher import Pusher
-from django.http import JsonResponse
-from decouple import config
 from django.contrib.auth.models import User
-from .models import *
+from django.http import JsonResponse
 from rest_framework.decorators import api_view
+from pusher import Pusher
+from decouple import config
+from .models import *
 import json
 import sys
 
@@ -96,13 +96,13 @@ def joinlobby(request):
     player = user.player
     player_id = player.user.id
     uuid = player.uuid
+    existing_game = player.game()
 
-    if player.game() is not None:
-        game = player.game()
+    if existing_game is not None:
         room = player.room()
 
-        min_room_id = game.min_room_id
-        max_room_id = min_room_id+game.total_rooms()
+        min_room_id = existing_game.min_room_id
+        max_room_id = min_room_id+existing_game.total_rooms()
         rooms_arr = list(Room.objects.filter(
             id__gte=min_room_id, id__lte=max_room_id))
         for i in range(len(rooms_arr)):
@@ -114,11 +114,11 @@ def joinlobby(request):
             'username': player.user.username,
         },
         'game': {
-            'id': game.id,
-            'in_progress': game.in_progress,
+            'id': existing_game.id,
+            'in_progress': existing_game.in_progress,
             'uuids': room.player_UUIDs(player_id),
             'usernames': room.player_usernames(player_id),
-            'num_players': game.num_players()
+            'num_players': existing_game.num_players()
         },
         'current_room': {
             'title': room.title,
