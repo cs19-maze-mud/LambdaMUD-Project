@@ -289,7 +289,7 @@ min_room_id - INTEGER - The first Room's ID
 
 - Specify maze ending
 
-#### total_rooms()
+#### num_rooms()
 
 - Return total rooms in map
 
