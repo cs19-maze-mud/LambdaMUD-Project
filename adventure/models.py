@@ -19,12 +19,12 @@ class Game(models.Model):
     def generate_rooms(self):
         room_id = Room.objects.all().aggregate(Max('id'))['id__max']
         if room_id is None:
-            room_id = 0
-        print(room_id)
-        self.min_room_id = room_id 
+            self.min_room_id = 0
+        else:
+            self.min_room_id = room_id + 1
         self.save()
-
-        total_rooms = self.total_rooms()
+        total_rooms = self.num_rooms()
+        
         for id in range(self.min_room_id, total_rooms+self.min_room_id):
             if id == 0:
                 new_room = Room(
@@ -41,7 +41,6 @@ class Game(models.Model):
                     description=self.generate_description()
                 )
                 new_room.save()
-            # print(new_room.title)
 
     def generate_maze(self):
 
@@ -76,7 +75,7 @@ class Game(models.Model):
             i += 1
 
     def generate_ending(self):
-        count = self.min_room_id + self.total_rooms()
+        count = self.min_room_id + self.num_rooms()
         maze_end = randint(self.min_room_id + 1, count-1)
         ending_room = Room.objects.get(id=maze_end)
         ending_room.end = True
@@ -86,7 +85,14 @@ class Game(models.Model):
         # Todo...
         pass
 
-    def total_rooms(self):
+    def all_rooms(self):
+        last_room_id = self.min_room_id+self.num_rooms()-1
+        room_list = list(Room.objects.filter(
+            id__gte=self.min_room_id, id__lte=last_room_id))
+        room_list = [model_to_dict(room) for room in room_list]
+        return room_list
+
+    def num_rooms(self):
         return self.map_columns * self.map_columns
 
     def num_players(self):
@@ -98,6 +104,9 @@ class Game(models.Model):
             players_list[i] = model_to_dict(players_list[i])['uuid']
         return list(filter(lambda p_uuid: p_uuid !=
                            player_uuid, players_list))
+
+    def reset_players(self):
+        Player.objects.filter(game_id=self.id).update(current_room=-1,game_id=-1)
 
     @staticmethod
     def generate_title():

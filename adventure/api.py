@@ -1,12 +1,12 @@
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.forms.models import model_to_dict
-from pusher import Pusher
-from django.http import JsonResponse
-from decouple import config
 from django.contrib.auth.models import User
-from .models import *
+from django.http import JsonResponse
 from rest_framework.decorators import api_view
+from pusher import Pusher
+from decouple import config
+from .models import *
 import json
 import sys
 
@@ -26,21 +26,16 @@ def initialize(request):
     player = request.user.player
     player_id = player.user.id
     game = player.game()
+
     if game is not None:
         game.in_progress = True
         game.save()
     else:
         return JsonResponse({'message': 'Game has ended please join a new lobby'}, safe=True)
 
-    room = player.room()
-    min_room_id = game.min_room_id
-    max_room_id = min_room_id+game.total_rooms()
-    rooms_arr = list(Room.objects.filter(
-        id__gte=min_room_id, id__lte=max_room_id))
-    for i in range(len(rooms_arr)):
-        rooms_arr[i] = model_to_dict(rooms_arr[i])
-
-    uuids = room.player_UUIDs(player.user.id)
+    current_room = player.room()
+    rooms_list = game.all_rooms()
+    uuids = current_room.player_UUIDs(player_id)
 
     response_object = {
         'user': {
@@ -51,22 +46,22 @@ def initialize(request):
             'id': game.id,
             'in_progress': game.in_progress,
             'uuids': uuids,
-            'usernames': room.player_usernames(player.user.id),
+            'usernames': current_room.player_usernames(player_id),
             'num_players': len(uuids) + 1
         },
         'current_room': {
-            'title': room.title,
-            'description': room.description,
-            'visited': room.visited,
-            'end': room.end,
-            'players': room.player_usernames(player.user.id),
-            'loc': room.id,
-            'n': room.n,
-            's': room.s,
-            'e': room.e,
-            'w': room.w,
+            'title': current_room.title,
+            'description': current_room.description,
+            'visited': current_room.visited,
+            'end': current_room.end,
+            'players': current_room.player_usernames(player_id),
+            'loc': current_room.id,
+            'n': current_room.n,
+            's': current_room.s,
+            'e': current_room.e,
+            'w': current_room.w,
         },
-        'maze': rooms_arr
+        'maze': rooms_list
     }
 
     for p_uuid in uuids:
@@ -96,17 +91,11 @@ def joinlobby(request):
     player = user.player
     player_id = player.user.id
     uuid = player.uuid
+    existing_game = player.game()
 
-    if player.game() is not None:
-        game = player.game()
-        room = player.room()
-
-        min_room_id = game.min_room_id
-        max_room_id = min_room_id+game.total_rooms()
-        rooms_arr = list(Room.objects.filter(
-            id__gte=min_room_id, id__lte=max_room_id))
-        for i in range(len(rooms_arr)):
-            rooms_arr[i] = model_to_dict(rooms_arr[i])
+    if existing_game is not None:
+        current_room = player.room()
+        rooms_list = existing_game.all_rooms()
 
         return JsonResponse({
         'user': {
@@ -114,25 +103,25 @@ def joinlobby(request):
             'username': player.user.username,
         },
         'game': {
-            'id': game.id,
-            'in_progress': game.in_progress,
-            'uuids': room.player_UUIDs(player_id),
-            'usernames': room.player_usernames(player_id),
-            'num_players': game.num_players()
+            'id': existing_game.id,
+            'in_progress': existing_game.in_progress,
+            'uuids': current_room.player_UUIDs(player_id),
+            'usernames': current_room.player_usernames(player_id),
+            'num_players': existing_game.num_players()
         },
         'current_room': {
-            'title': room.title,
-            'description': room.description,
-            'visited': room.visited,
-            'end': room.end,
-            'players': room.player_usernames(player_id),
-            'loc': room.id,
-            'n': room.n,
-            's': room.s,
-            'e': room.e,
-            'w': room.w,
+            'title': current_room.title,
+            'description': current_room.description,
+            'visited': current_room.visited,
+            'end': current_room.end,
+            'players': current_room.player_usernames(player_id),
+            'loc': current_room.id,
+            'n': current_room.n,
+            's': current_room.s,
+            'e': current_room.e,
+            'w': current_room.w,
         },
-        'maze': rooms_arr
+        'maze': rooms_list
     }, safe=True)
 
     if no_preference and Game.objects.filter(in_progress=False):
@@ -152,14 +141,8 @@ def joinlobby(request):
                        {'message': f'{player.user.username} has entered the lobby', 'joining': 'joining lobby'})
     player.initialize(new_game.id, new_game.min_room_id)
     player.save()
-    room = player.room()
-
-    min_room_id = new_game.min_room_id
-    max_room_id = min_room_id+new_game.total_rooms()
-    rooms_arr = list(Room.objects.filter(
-        id__gte=min_room_id, id__lte=max_room_id))
-    for i in range(len(rooms_arr)):
-        rooms_arr[i] = model_to_dict(rooms_arr[i])
+    current_room = player.room()
+    rooms_list = new_game.all_rooms()
 
     return JsonResponse({
         'user': {
@@ -169,23 +152,23 @@ def joinlobby(request):
         'game': {
             'id': new_game.id,
             'in_progress': new_game.in_progress,
-            'uuids': room.player_UUIDs(player_id),
-            'usernames': room.player_usernames(player_id),
+            'uuids': current_room.player_UUIDs(player_id),
+            'usernames': current_room.player_usernames(player_id),
             'num_players': new_game.num_players()
         },
         'current_room': {
-            'title': room.title,
-            'description': room.description,
-            'visited': room.visited,
-            'end': room.end,
-            'players': room.player_usernames(player_id),
-            'loc': room.id,
-            'n': room.n,
-            's': room.s,
-            'e': room.e,
-            'w': room.w,
+            'title': current_room.title,
+            'description': current_room.description,
+            'visited': current_room.visited,
+            'end': current_room.end,
+            'players': current_room.player_usernames(player_id),
+            'loc': current_room.id,
+            'n': current_room.n,
+            's': current_room.s,
+            'e': current_room.e,
+            'w': current_room.w,
         },
-        'maze': rooms_arr
+        'maze': rooms_list
     }, safe=True)
 
 
@@ -215,22 +198,24 @@ def move(request):
     reverse_dirs = {'n': 'south', 's': 'north', 'e': 'west', 'w': 'east'}
     player_id = player.user.id
     player_uuid = player.uuid
-    game = player.game()
+    current_game = player.game()
 
-    if next_room_id != -1 and game != None and game.in_progress:
+    if current_game and current_game.in_progress and next_room_id != -1:
         next_room = Room.objects.get(id=next_room_id)
         player.moves += 1
+
         if next_room.end:
-            # Todo: Refactor if more than 1 game going at the same time:
             player_uuid = player.uuid
-            for p_uuid in game.get_games_UUIDs(player_uuid):
+            for p_uuid in current_game.get_games_UUIDs(player_uuid):
                 pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
                                {'message': f'{player.user.username} has completed the maze', 'ending': 'maze completed'})
-            min_room_id = game.min_room_id
-            max_room_id = min_room_id+game.total_rooms()
+            min_room_id = current_game.min_room_id
+            max_room_id = min_room_id+current_game.num_rooms()-1
+            current_game.reset_players()
             Room.objects.filter(id__gte=min_room_id,
                                 id__lte=max_room_id).delete()
-            Game.objects.filter(id=game.id).delete()
+            Game.objects.filter(id=current_game.id).delete()
+
             return JsonResponse({
                 'in_progress': False,
                 'error': False,
@@ -254,7 +239,7 @@ def move(request):
                 'title': next_room.title,
                 'description': next_room.description,
                 'players': players,
-                'num_players': game.num_players(),
+                'num_players': current_game.num_players(),
                 'loc': next_room.id,
                 'n': next_room.n,
                 's': next_room.s,
@@ -263,13 +248,13 @@ def move(request):
                 'moves': player.moves,
                 'in_progress': True,
                 'error': False}, safe=True)
-    elif game == None:
+    elif current_game == None:
         return JsonResponse({
             'in_progress': False,
             'error': True,
             'message': 'The game has already ended! Someone found their way to the end of the maze!!'
         }, safe=True)
-    elif not game.in_progress:
+    elif not current_game.in_progress:
         return JsonResponse({
             'in_progress': False,
             'error': True,
@@ -283,7 +268,7 @@ def move(request):
             'title': room.title,
             'description': room.description,
             'players': players,
-            'num_players': game.num_players(),
+            'num_players': current_game.num_players(),
             'loc': room.id,
             'n': room.n,
             's': room.s,
@@ -331,17 +316,18 @@ def shout(request):
 @api_view(['GET'])
 def end(request):
     player = request.user.player
-    game = player.game()
-    if game and game.num_players() == 1:
-        min_room_id = game.min_room_id
-        max_room_id = min_room_id+game.total_rooms()
+    current_game = player.game()
+    if current_game and current_game.num_players() == 1:
+        min_room_id = current_game.min_room_id
+        max_room_id = min_room_id+current_game.num_rooms()-1
+        current_game.reset_players()
         Room.objects.filter(id__gte=min_room_id, id__lte=max_room_id).delete()
-        Game.objects.filter(id=game.id).delete()
+        Game.objects.filter(id=current_game.id).delete()
         return JsonResponse({
             'in_progress': False,
             'error': False,
             'message': 'Game quit!'}, safe=True)
-    elif game and game.num_players() > 1:
+    elif current_game and current_game.num_players() > 1:
         return JsonResponse({
             'in_progress': True,
             'error': True,
@@ -359,11 +345,8 @@ def end(request):
 @api_view(['GET'])
 def get_maze(request):
     player = request.user.player
-    game = player.game()
-    min_room_id = game.min_room_id
-    max_room_id = min_room_id+game.total_rooms()
-    rooms_arr = list(Room.objects.filter(
-        id__gte=min_room_id, id__lte=max_room_id))
-    for i in range(len(rooms_arr)):
-        rooms_arr[i] = model_to_dict(rooms_arr[i])
-    return JsonResponse({'maze': rooms_arr})
+    current_game = player.game()
+    if current_game:
+        return JsonResponse({'error': False, 'maze': current_game.all_rooms()})
+    else:
+        return JsonResponse({'error': True, 'message': 'You are not in a game'})
