@@ -19,8 +19,9 @@ class Game(models.Model):
     def generate_rooms(self):
         room_id = Room.objects.all().aggregate(Max('id'))['id__max']
         if room_id is None:
-            room_id = 0
-        self.min_room_id = room_id + 1
+            self.min_room_id = 0
+        else:
+            self.min_room_id = room_id + 1
         self.save()
         total_rooms = self.num_rooms()
         
@@ -87,7 +88,7 @@ class Game(models.Model):
     def all_rooms(self):
         last_room_id = self.min_room_id+self.num_rooms()-1
         room_list = list(Room.objects.filter(
-            id__gte=min_room_id, id__lte=last_room_id))
+            id__gte=self.min_room_id, id__lte=last_room_id))
         room_list = [model_to_dict(room) for room in room_list]
         return room_list
 
