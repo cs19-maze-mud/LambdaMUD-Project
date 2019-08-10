@@ -230,12 +230,12 @@ class Game(models.Model):
         description = choice(description_adlibs)
         description = description.replace("adjective", choice(adjectives))
         description = description.replace("noun", choice(nouns))
-        description = description.replace("adverb", choice(adverb))
-        description = description.replace("where", choice(where))
+        # description = description.replace("adverb", choice(adverb))
+        # description = description.replace("where", choice(where))
         # description = description.replace("how_much", choice(how_much))
-        #description = description.replace("when", choice(when))
-        description = description.replace("how_often", choice(how_often))
-        description = description.replace("action_verb", choice(action_verb))
+        # description = description.replace("when", choice(when))
+        # description = description.replace("how_often", choice(how_often))
+        # description = description.replace("action_verb", choice(action_verb))
         return description
 
 
