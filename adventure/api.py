@@ -134,7 +134,7 @@ def joinlobby(request):
         new_game = Game(map_columns=columns, in_progress=False)
         new_game.generate_rooms()
         new_game.generate_maze()
-        new_game.generate_ending()
+        new_game.generate_end()
 
     for p_uuid in new_game.get_games_UUIDs(uuid):
         pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
