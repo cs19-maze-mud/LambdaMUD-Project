@@ -19,6 +19,63 @@ pusher = Pusher(
     ssl=True,
 )
 
+@csrf_exempt
+@api_view(['GET'])
+def get_game(request):
+    player = request.user.player
+    player_id = player.user.id
+    game = player.game()
+
+    if not game:
+        return JsonResponse({
+        'error': False,
+        'in_game': False,
+        'message': 'You are not in a game or game lobby!'}, safe=True)
+
+    current_room = player.room()
+    rooms_list = game.all_rooms()
+    uuids = current_room.player_UUIDs(player_id)
+
+    response_object = {
+        'error': False,
+        'in_game': True,
+        'user': {
+            'uuid': player.uuid,
+            'username': player.user.username,
+        },
+        'game': {
+            'id': game.id,
+            'in_progress': game.in_progress,
+            'uuids': uuids,
+            'usernames': current_room.player_usernames(player_id),
+            'num_players': len(uuids) + 1,
+            'map_columns': game.map_columns
+        },
+        'current_room': {
+            'title': current_room.title,
+            'description': current_room.description,
+            'visited': current_room.visited,
+            'end': current_room.end,
+            'players': current_room.player_usernames(player_id),
+            'loc': current_room.id,
+            'n': current_room.n,
+            's': current_room.s,
+            'e': current_room.e,
+            'w': current_room.w,
+        },
+        'maze': rooms_list
+    }
+
+    for p_uuid in uuids:
+        if not game.in_progress:
+            pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
+                {'message': f'{player.user.username} has entered the lobby', 'joining': 'joining lobby'})
+        else:
+            pusher.trigger(f'p-channel-{p_uuid}', u'broadcast',
+                {'message': f'{player.user.username} has joined the game', 'joining': 'joining the game'})
+
+    return JsonResponse(response_object, safe=True)
+
 
 @csrf_exempt
 @api_view(['GET'])
