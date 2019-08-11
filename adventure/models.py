@@ -46,13 +46,10 @@ class Game(models.Model):
 
         def room_north(loc):
             return loc - self.map_columns
-
         def room_south(loc):
             return loc + self.map_columns
-
         def room_east(loc):
             return loc + 1
-
         def room_west(loc):
             return loc - 1
 
@@ -65,25 +62,59 @@ class Game(models.Model):
             db_room.e = -1 if room.east else room_east(i+self.min_room_id)
             db_room.w = -1 if room.west else room_west(i+self.min_room_id)
             db_room.save()
-            # print(db_room.id)
-            # print(db_room.title)
-            # print(db_room.description)
-            # print(f"n  {db_room.n}")
-            # print(f"e  {db_room.e}")
-            # print(f"e  {db_room.w}")
-            # print(f"s  {db_room.s}")
             i += 1
+    
+    def generate_end(self):
+        # Get starting room
+        first_room = Room.objects.get(id=self.min_room_id)
+        # The furthest rooms will be stored in this array
+        furthest_rooms = [first_room]
+        # All visited rooms will be stored in this array
+        visited_rooms = []
+        # Each time a further room is found the loop will run again
+        further_found = True
 
-    def generate_ending(self):
-        count = self.min_room_id + self.num_rooms()
-        maze_end = randint(self.min_room_id + 1, count-1)
-        ending_room = Room.objects.get(id=maze_end)
-        ending_room.end = True
-        ending_room.save()
+        # While further rooms are being found
+        while further_found:
+            further_found = False
+            # For each room
+            for room in furthest_rooms:
+                n = room.n > -1 and room.n not in visited_rooms
+                s = room.s > -1 and room.s not in visited_rooms
+                e = room.e > -1 and room.e not in visited_rooms
+                w = room.w > -1 and room.w not in visited_rooms
 
-    def generate_longest_path(self):
-        # Todo...
-        pass
+                # If there's a further room that has not been visited
+                if n or s or e or w:
+
+                    # Add this room to visited_rooms
+                    # Remove it from furthest rooms (because a further room was found)
+                    further_found = True
+                    visited_rooms.append(room.id)
+                    furthest_rooms.remove(room)
+                    # Add any further rooms to furthest_rooms
+                    if n:
+                        applicable_room = Room.objects.get(id=room.n)
+                        furthest_rooms.append(applicable_room)
+                    if s:
+                        applicable_room = Room.objects.get(id=room.s)
+                        furthest_rooms.append(applicable_room)
+                    if e:
+                        applicable_room = Room.objects.get(id=room.e)
+                        furthest_rooms.append(applicable_room)
+                    if w:
+                        applicable_room = Room.objects.get(id=room.w)
+                        furthest_rooms.append(applicable_room)
+                # If this room has no n, e, s, or w neighbor that has NOT been visited
+                # And if there's more than one room in the furthest_rooms list
+                elif len(furthest_rooms) > 1:
+                    # Then remove it
+                    furthest_rooms.remove(room)
+        
+        # Set the end column to True on the furthest room
+        furthest_room = furthest_rooms.pop()
+        furthest_room.end = True
+        furthest_room.save()
 
     def all_rooms(self):
         last_room_id = self.min_room_id+self.num_rooms()-1
@@ -119,23 +150,41 @@ class Game(models.Model):
             "abyss", "chasm", "hollow", "crevice", "tunnel", "hole", "grotto", "cavity", "hollow", "den", "burrow", "chamber", "shelter", "expanse", "narrows", "outlook", "overlook", "peak",
             "gully", "ditch", "fissure", "sinkhole", "rift", "channel", "interior", "bunker", "pool", "tomb",
         ]
-        # how = None
-        # where = None
-        # how_much = None
-        # when = None
-        # how_often = None
-        # verbs = None
+        adverb = [
+            "quietly", "loudly", "secretly", "fast", "well", "quickly", "easily", "slowly", "lowly", "accidentally", "badly", "carefully", "closely", "cheerfully", "beautifully", "worriedly",
+            "wishfully", "grimly", "eagerly"
+        ]
+        where = [
+            "towards", "there", "inside", "here", "back", "far", "above", "abroad", "behind", "away", "outside", "nearby", "downstairs", "indoor", "in", "out", "elsewhere", "anywhere"
+        ]
+        how_much = [
+            "fully", "almost", "rather", "extremely", "entirely", "too", "fairly", "very", "just", "barely", "enough", "deeply", "completely", "quite", "a good deal", "a lot", "a few", "much",
+            "some", "many", "lots", "little", "nothing"
+        ]
+        when = [
+            "last year", "last month", "today", "tomorrow", "last week", "later", "soon", "now", "yesterday", "tonight", "already", "then"
+        ]
+        how_often = [
+            "never", "sometimes", "often", "usually", "generally", "occasionally", "seldom", "rarely", "normally", "frequently", "hardly ever", "always"
+        ]
+        action_verb = [
+            "run", "dance", "slide", "jump", "think", "do", "go", "stand", "smile", "listen", "walk", "laugh", "cough", "play", "run", "would", "should", "do", "can", "did", "could", "may",
+            "must", "eat", "think", "bring", "hold", "buy", "lay", "catch", "redo"
+        ]
         title_adlibs = [
             "adjective noun",
+            "how_much adjective noun",
+            "how_often adjective noun",
+            "The where noun",
         ]
         title = choice(title_adlibs)
         title = title.replace("adjective", choice(adjectives))
         title = title.replace("noun", choice(nouns))
-        # title = title.replace("how", choice(how))
-        # title = title.replace("where", choice(where))
-        # title = title.replace("how_much", choice(how_much))
+        #title = title.replace("adverb", choice(adverb))
+        title = title.replace("where", choice(where))
+        title = title.replace("how_much", choice(how_much))
         # title = title.replace("when", choice(when))
-        # title = title.replace("how_often", choice(how_often))
+        title = title.replace("how_often", choice(how_often))
         # title = title.replace("verb", choice(verbs))
         return title
 
@@ -150,24 +199,43 @@ class Game(models.Model):
             "abyss", "chasm", "hollow", "crevice", "tunnel", "hole", "grotto", "cavity", "hollow", "den", "burrow", "chamber", "shelter", "expanse", "narrows", "outlook", "overlook", "peak",
             "gully", "ditch", "fissure", "sinkhole", "rift", "channel", "interior", "bunker", "pool", "tomb",
         ]
-        # how = None
-        # where = None
-        # how_much = None
-        # when = None
-        # how_often = None
-        # verbs = None
+        adverb = [
+            "quietly", "loudly", "secretly", "fast", "well", "quickly", "easily", "slowly", "lowly", "accidentally", "badly", "carefully", "closely", "cheerfully", "beautifully", "worriedly",
+            "wishfully", "grimly", "eagerly"
+        ]
+        where = [
+            "towards", "there", "inside", "here", "back", "far", "above", "abroad", "behind", "away", "outside", "nearby", "downstairs", "indoor", "in", "out", "elsewhere", "anywhere"
+        ]
+        how_much = [
+            "fully", "almost", "rather", "extremely", "entirely", "too", "fairly", "very", "just", "barely", "enough", "deeply", "completely", "quite", "a good deal", "a lot", "a few", "much",
+            "some", "many", "lots", "little", "nothing"
+        ]
+        when = [
+            "last year", "last month", "today", "tomorrow", "last week", "later", "soon", "now", "yesterday", "tonight", "already", "then"
+        ]
+        how_often = [
+            "never", "sometimes", "often", "usually", "generally", "occasionally", "seldom", "rarely", "normally", "frequently", "hardly ever", "always"
+        ]
+        action_verb = [
+            "run", "dance", "slide", "jump", "think", "do", "go", "stand", "smile", "listen", "walk", "laugh", "cough", "play", "run", "would", "should", "do", "can", "did", "could", "may",
+            "must", "eat", "think", "bring", "hold", "buy", "lay", "catch", "redo"
+        ]
         description_adlibs = [
             "Its adjective noun awaits!",
+            # "I how_often come here",
+            #"I usually action_verb here",
+            # "how_often I feel lost",
+            # "It's how_often adjective here"
         ]
         description = choice(description_adlibs)
         description = description.replace("adjective", choice(adjectives))
         description = description.replace("noun", choice(nouns))
-        # description = description.replace("how", choice(how))
+        # description = description.replace("adverb", choice(adverb))
         # description = description.replace("where", choice(where))
         # description = description.replace("how_much", choice(how_much))
         # description = description.replace("when", choice(when))
         # description = description.replace("how_often", choice(how_often))
-        # description = description.replace("verb", choice(verbs))
+        # description = description.replace("action_verb", choice(action_verb))
         return description
 
 

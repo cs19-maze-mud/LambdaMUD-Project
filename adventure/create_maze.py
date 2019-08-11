@@ -6,7 +6,7 @@ class Room:
         self.i = i # Row
         self.j = j # Column
         self.north = True # True == Wall
-        self.east = True # False == Wall
+        self.east = True # False == Door
         self.south = True
         self.west = True
         self.visited = False
@@ -52,7 +52,6 @@ class Maze:
                     self.current = stack.pop()
                 dfs()
         dfs()
-
 
     def remove_walls(self,a,b):
         x = a.i - b.i
