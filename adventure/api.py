@@ -30,6 +30,10 @@ def get_game(request):
         return JsonResponse({
         'error': False,
         'in_game': False,
+        'user': {
+            'uuid': player.uuid,
+            'username': player.user.username,
+        },
         'message': 'You are not in a game or game lobby!'}, safe=True)
 
     current_room = player.room()
