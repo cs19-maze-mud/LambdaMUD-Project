@@ -173,18 +173,18 @@ class Game(models.Model):
         ]
         title_adlibs = [
             "adjective noun",
-            "how_much adjective noun",
-            "how_often adjective noun",
-            "The where noun",
+            # "how_much adjective noun",
+            # "how_often adjective noun",
+            # "The where noun",
         ]
         title = choice(title_adlibs)
         title = title.replace("adjective", choice(adjectives))
         title = title.replace("noun", choice(nouns))
-        #title = title.replace("adverb", choice(adverb))
-        title = title.replace("where", choice(where))
-        title = title.replace("how_much", choice(how_much))
+        # title = title.replace("adverb", choice(adverb))
+        # title = title.replace("where", choice(where))
+        # title = title.replace("how_much", choice(how_much))
         # title = title.replace("when", choice(when))
-        title = title.replace("how_often", choice(how_often))
+        # title = title.replace("how_often", choice(how_often))
         # title = title.replace("verb", choice(verbs))
         return title
 
